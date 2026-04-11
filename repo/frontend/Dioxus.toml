@@ -1,0 +1,19 @@
+[application]
+name = "careops-frontend"
+default_platform = "web"
+
+[application.tools.tailwindcss]
+enabled = false
+
+[web.app]
+title = "CareOps Portal"
+
+[web.watcher]
+watch_path = ["src", "assets"]
+
+[web.resource]
+style = ["assets/main.css"]
+
+[web.resource.dev]
+style = []
+script = []

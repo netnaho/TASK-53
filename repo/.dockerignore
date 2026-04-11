@@ -1,0 +1,12 @@
+target/
+.git/
+.gitignore
+.env
+.env.*
+docs/
+unit_tests/
+API_tests/
+*.md
+docker-compose*.yml
+.idea/
+.vscode/

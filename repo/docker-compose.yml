@@ -1,0 +1,55 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: careops-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: careops_root
+      MYSQL_DATABASE: careops
+      MYSQL_USER: careops_user
+      MYSQL_PASSWORD: careops_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ucareops_user", "-pcareops_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: careops-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ROCKET_ADDRESS: "0.0.0.0"
+      ROCKET_PORT: "8000"
+      DATABASE_URL: "mysql://careops_user:careops_pass@db:3306/careops"
+      RUST_LOG: "info,careops_backend=debug"
+      APP_ENV: "local"
+      JWT_SECRET: "careops-dev-jwt-secret-change-in-production-min-32-chars!"
+      ENCRYPTION_KEY: "careops-dev-encryption-key-0123456789abcdef"
+      SESSION_TTL_HOURS: "24"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: careops-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
