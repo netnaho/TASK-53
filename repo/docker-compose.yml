@@ -9,7 +9,7 @@ services:
       MYSQL_USER: careops_user
       MYSQL_PASSWORD: careops_pass
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
