@@ -14,6 +14,33 @@ echo ""
 
 FAILED=0
 
+# --- Wait for backend readiness ---
+# When run right after `docker compose up -d`, the backend container may still
+# be running migrations/seeds and Rocket may not yet be listening on :8000.
+# Without this wait, every HTTP test below races the backend and fails with
+# connection-refused (curl exit 7, status "000"). Poll /api/health/live until
+# it returns 200, up to a generous timeout.
+BACKEND_URL="${BACKEND_URL:-http://localhost:8000}"
+READY_TIMEOUT="${BACKEND_READY_TIMEOUT:-120}"
+
+echo -e "${YELLOW}Waiting for backend at ${BACKEND_URL}/api/health/live (timeout ${READY_TIMEOUT}s)...${NC}"
+WAITED=0
+while true; do
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/api/health/live" || echo "000")
+    if [ "$STATUS" = "200" ]; then
+        echo -e "${GREEN}Backend is ready (after ${WAITED}s).${NC}"
+        break
+    fi
+    if [ "$WAITED" -ge "$READY_TIMEOUT" ]; then
+        echo -e "${RED}Backend did not become ready within ${READY_TIMEOUT}s (last status: ${STATUS}).${NC}"
+        echo -e "${RED}Aborting test run. Check 'docker compose logs backend' for details.${NC}"
+        exit 1
+    fi
+    sleep 2
+    WAITED=$((WAITED + 2))
+done
+echo ""
+
 # --- Backend Unit Tests ---
 echo -e "${YELLOW}[1/11] Backend Unit Tests (cargo test)${NC}"
 if ! command -v cargo >/dev/null 2>&1; then
