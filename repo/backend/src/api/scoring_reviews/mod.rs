@@ -208,3 +208,6 @@ pub fn routes() -> Vec<Route> {
         process_review,
     ]
 }
+
+#[cfg(test)]
+mod tests;

@@ -1,4 +1,3 @@
-use dioxus::prelude::*;
 use crate::models::UserProfile;
 
 /// Global authentication state signal.
@@ -31,6 +30,48 @@ impl AuthState {
             .map(|u| u.roles.iter().any(|r| r == role_name))
             .unwrap_or(false)
     }
+
+    /// Display username for topbar.  Returns empty string when unauthenticated.
+    pub fn display_username(&self) -> String {
+        self.user
+            .as_ref()
+            .map(|u| u.username.clone())
+            .unwrap_or_default()
+    }
+
+    /// Display roles as comma-separated string for topbar.
+    pub fn display_roles(&self) -> String {
+        self.user
+            .as_ref()
+            .map(|u| u.roles.join(", "))
+            .unwrap_or_default()
+    }
+
+    /// Returns list of sidebar nav items (label, permission) the user is allowed to see.
+    /// Mirrors the permission gates in `components/sidebar.rs`.
+    pub fn visible_nav_items(&self) -> Vec<&'static str> {
+        use crate::state::perms;
+        let mut items = Vec::new();
+        let checks: &[(&str, &str)] = &[
+            ("Dashboard",        perms::MENU_DASHBOARD),
+            ("Service Catalog",  perms::MENU_CATALOG),
+            ("Client Plans",     perms::MENU_PLANS),
+            ("Service Delivery", perms::MENU_DELIVERY),
+            ("Billing",          perms::MENU_BILLING),
+            ("Quality Scoring",  perms::MENU_SCORING),
+            ("Reports",          perms::MENU_REPORTS),
+            ("Audit Log",        perms::MENU_AUDIT),
+            ("Administration",   perms::MENU_ADMIN),
+            ("User Management",  perms::MENU_USERS),
+            ("Ops Controls",     perms::API_OPS_READ),
+        ];
+        for (label, perm) in checks {
+            if self.has_permission(perm) {
+                items.push(*label);
+            }
+        }
+        items
+    }
 }
 
 /// Permission code constants matching backend auth_policy.
@@ -56,3 +97,6 @@ pub mod perms {
     pub const API_OPS_READ: &str = "api.ops.read";
     pub const API_OPS_WRITE: &str = "api.ops.write";
 }
+
+#[cfg(test)]
+mod state_test;

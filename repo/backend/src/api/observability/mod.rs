@@ -123,3 +123,6 @@ pub async fn chaos_status(
 pub fn routes() -> Vec<Route> {
     rocket::routes![liveness, readiness, metrics, alerts, chaos_status]
 }
+
+#[cfg(test)]
+mod tests;

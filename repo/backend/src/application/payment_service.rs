@@ -610,8 +610,8 @@ mod tests {
 
     #[test]
     fn round_to_2_basic() {
-        assert_eq!(round_to_2(1.005), 1.0);   // IEEE 754: 1.005 stores as < 1.005
-        assert_eq!(round_to_2(1.015), 1.02);
+        assert_eq!(round_to_2(1.005), 1.0);   // IEEE 754: 1.005 stores as ≈1.00499... → rounds down
+        assert_eq!(round_to_2(1.015), 1.01);  // IEEE 754: 1.015 stores as ≈1.01499... → rounds down
         assert_eq!(round_to_2(99.999), 100.0);
         assert_eq!(round_to_2(0.0), 0.0);
         assert_eq!(round_to_2(-0.005), -0.01);

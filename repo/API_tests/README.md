@@ -15,25 +15,23 @@ The tests depend on:
 - **Seeded demo org**: "CareOps Demo Org" with departments
 - **MySQL available**: Tests create transient fixture data (orgs, users) via the admin API
 
-Tests require `python3` on PATH for JSON parsing.
-
 ## Running
 
+All test suites run inside Docker containers via `run_tests.sh` — no local `python3`, `cargo`, or
+other runtime tools are required on the host.
+
 ```bash
-# Run all suites (unit + API) via the project test runner
+# Run all suites (unit + API) via the project test runner (fully Docker-contained)
 ./run_tests.sh
 
-# Run individual suites
-bash API_tests/test_smoke.sh
-bash API_tests/test_auth.sh
-bash API_tests/test_catalog_delivery.sh
-bash API_tests/test_billing.sh
-bash API_tests/test_scoring.sh
-bash API_tests/test_reports.sh
-bash API_tests/test_ops.sh
+# Run an individual suite inside the api-test-runner container
+docker compose --profile test run --rm api-test-runner bash API_tests/test_auth.sh
+docker compose --profile test run --rm api-test-runner bash API_tests/test_billing.sh
+docker compose --profile test run --rm api-test-runner bash API_tests/test_scoring.sh
 
-# Against a custom backend URL
-BACKEND_URL=http://localhost:8000 bash API_tests/test_auth.sh
+# Against a custom backend URL (inside container, backend service name resolves automatically)
+docker compose --profile test run --rm -e BACKEND_URL=http://backend:8000 \
+  api-test-runner bash API_tests/test_auth.sh
 ```
 
 ## Test Suites

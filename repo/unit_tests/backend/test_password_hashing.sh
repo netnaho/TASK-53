@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Unit test: verify password hashing module compiles and passes internal tests
-# This runs `cargo test` in the backend which includes auth_service and encryption tests.
+# Security unit test: password hashing, encryption, and permission cache.
+#
+# When run from run_tests.sh, this executes inside the backend-unit-tests
+# Docker container (rust:1.88-bookworm) via:
+#   docker compose --profile test run --rm backend-unit-tests \
+#       cargo test --lib auth_service encryption permission_cache
+#
+# Running directly on a host with cargo:
+#   cd repo/backend && cargo test --lib
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$SCRIPT_DIR/../../backend"
+BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../backend" && pwd)"
 
-echo "Running backend unit tests (includes password hashing, encryption, permission cache)..."
-
-if [ ! -d "$BACKEND_DIR" ]; then
-    echo "ERROR: Backend directory not found at $BACKEND_DIR"
-    exit 1
-fi
-
-cd "$BACKEND_DIR"
+echo "Security unit tests (password hashing, encryption, permission cache)..."
 
 if command -v cargo &>/dev/null; then
-    cargo test --lib 2>&1
-    echo "Backend unit tests passed"
+    (cd "$BACKEND_DIR" && cargo test --lib 2>&1)
+    echo "Security unit tests passed."
 else
-    echo "SKIP: Rust/Cargo not installed locally (tests run in Docker build)"
+    echo "INFO: cargo not available locally — tests run inside Docker container."
+    echo "      Use: docker compose --profile test run --rm backend-unit-tests"
     exit 0
 fi

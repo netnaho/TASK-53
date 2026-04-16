@@ -121,3 +121,6 @@ pub async fn create_note(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_entries, get_entry, create_entry, update_entry, list_notes, create_note]
 }
+
+#[cfg(test)]
+mod tests;

@@ -3,6 +3,16 @@ name = "careops-frontend"
 version = "0.1.0"
 edition = "2021"
 
+# lib target: exposes pure-logic modules (state, models) for cargo test --lib
+# without WASM-dependent code (services/api_client uses gloo-net).
+[lib]
+name = "careops_frontend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "careops-frontend"
+path = "src/main.rs"
+
 [dependencies]
 dioxus = { version = "0.6", features = ["web", "router"] }
 serde = { version = "1", features = ["derive"] }

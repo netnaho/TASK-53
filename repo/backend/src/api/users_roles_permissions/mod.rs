@@ -283,3 +283,6 @@ pub fn routes() -> Vec<Route> {
     // For backward compatibility with existing mount point
     user_routes()
 }
+
+#[cfg(test)]
+mod tests;

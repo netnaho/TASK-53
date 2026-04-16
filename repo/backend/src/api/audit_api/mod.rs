@@ -38,3 +38,6 @@ pub async fn list_audit_logs(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_audit_logs]
 }
+
+#[cfg(test)]
+mod tests;

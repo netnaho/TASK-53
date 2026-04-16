@@ -37,3 +37,6 @@ pub async fn current_user(
 pub fn routes() -> Vec<Route> {
     rocket::routes![login, logout, current_user]
 }
+
+#[cfg(test)]
+mod tests;

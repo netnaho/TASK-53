@@ -146,3 +146,6 @@ pub fn routes() -> Vec<Route> {
         export_data,
     ]
 }
+
+#[cfg(test)]
+mod tests;

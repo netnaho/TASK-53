@@ -54,5 +54,54 @@ services:
     depends_on:
       - backend
 
+  # -----------------------------------------------------------------------
+  # Test services — activated with: docker compose --profile test ...
+  # run_tests.sh calls these automatically; no host Rust or Python needed.
+  # -----------------------------------------------------------------------
+
+  # Runs `cargo test --lib` for the backend inside the official Rust image.
+  # No database required — all unit tests are pure logic.
+  backend-unit-tests:
+    image: rust:1.88-bookworm
+    profiles: ["test"]
+    volumes:
+      - ./backend:/workspace
+      - backend-cargo-cache:/usr/local/cargo/registry
+      - backend-target-cache:/workspace/target
+    working_dir: /workspace
+    command: cargo test --color always
+
+  # Runs `cargo test --lib` for the frontend pure-logic lib crate (state, models).
+  # Uses native compilation — no WASM toolchain required.
+  frontend-unit-tests:
+    image: rust:1.88-bookworm
+    profiles: ["test"]
+    volumes:
+      - ./frontend:/workspace
+      - frontend-cargo-cache:/usr/local/cargo/registry
+      - frontend-target-cache:/workspace/target
+    working_dir: /workspace
+    command: cargo test --lib --color always
+
+  # Runs API shell test scripts inside a container with curl + python3.
+  # Set BACKEND_URL=http://backend:8000 so scripts reach the backend service.
+  api-test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    profiles: ["test"]
+    volumes:
+      - .:/workspace:ro
+    working_dir: /workspace
+    environment:
+      BACKEND_URL: "http://backend:8000"
+      BACKEND_READY_TIMEOUT: "120"
+    depends_on:
+      - backend
+
 volumes:
   db_data:
+  backend-cargo-cache:
+  backend-target-cache:
+  frontend-cargo-cache:
+  frontend-target-cache:

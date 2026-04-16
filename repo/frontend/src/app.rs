@@ -11,3 +11,6 @@ pub fn App() -> Element {
         Router::<Route> {}
     }
 }
+
+#[cfg(test)]
+mod app_test;

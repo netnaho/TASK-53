@@ -123,3 +123,6 @@ pub fn routes() -> Vec<Route> {
         list_projects, create_project,
     ]
 }
+
+#[cfg(test)]
+mod tests;

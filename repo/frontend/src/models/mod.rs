@@ -542,3 +542,6 @@ pub struct ExportResult {
     pub masked: bool,
     pub export_log_id: String,
 }
+
+#[cfg(test)]
+mod models_test;

@@ -79,3 +79,6 @@ pub async fn get_package_rules(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_packages, get_package, create_package, update_package, get_package_rules]
 }
+
+#[cfg(test)]
+mod tests;

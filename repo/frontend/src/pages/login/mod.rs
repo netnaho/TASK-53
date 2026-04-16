@@ -4,6 +4,25 @@ use crate::services::ApiClient;
 use crate::state::AuthState;
 use crate::router::Route;
 
+/// Validate login form input.
+/// Returns `Some(error_message)` if input is invalid, `None` if OK.
+pub(crate) fn validate_login_input(username: &str, password: &str) -> Option<String> {
+    if username.trim().is_empty() || password.is_empty() {
+        Some("Username and password are required".to_string())
+    } else {
+        None
+    }
+}
+
+/// Map an API client error to a user-facing login error message.
+pub(crate) fn map_login_error(api_err: &str) -> String {
+    if api_err.contains("401") {
+        "Invalid username or password".to_string()
+    } else {
+        format!("Login failed: {}", api_err)
+    }
+}
+
 #[component]
 pub fn Login() -> Element {
     let mut auth: Signal<AuthState> = use_context();
@@ -116,3 +135,6 @@ pub fn Login() -> Element {
         }
     }
 }
+
+#[cfg(test)]
+mod login_test;

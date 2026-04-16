@@ -66,3 +66,6 @@ pub async fn update_service(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_services, get_service, create_service, update_service]
 }
+
+#[cfg(test)]
+mod tests;

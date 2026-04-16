@@ -1,3 +1,5 @@
+Project Type: fullstack
+
 # CareOps Service Billing & Quality Management Portal
 
 A locally-deployed portal for managing care service delivery, billing, and quality scoring. Built with Dioxus (Rust/WASM frontend), Rocket (Rust backend), and MySQL.
@@ -17,8 +19,10 @@ A locally-deployed portal for managing care service delivery, billing, and quali
 ## Quick Start
 
 ```bash
-docker compose up
+docker-compose up
 ```
+
+> **Also accepted:** `docker compose up` (Docker Compose V2 syntax — both commands start the full stack identically)
 
 That's it. This single command:
 1. Starts MySQL and waits for it to be healthy
@@ -32,6 +36,75 @@ That's it. This single command:
 | Frontend | 3000 | http://localhost:3000 |
 | Backend API | 8000 | http://localhost:8000 |
 | MySQL | 3306 | `mysql://careops_user:careops_pass@localhost:3306/careops` |
+
+## Verification
+
+After running `docker-compose up`, verify the system is working correctly:
+
+### Step 1 — Health check
+
+```bash
+curl http://localhost:8000/api/health/live
+# Expected: {"status":"ok"}  (HTTP 200)
+
+curl http://localhost:8000/api/health/ready
+# Expected: {"status":"ready"}  (HTTP 200)
+```
+
+### Step 2 — API login and token
+
+```bash
+curl -s -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin123!"}'
+# Expected: JSON with "token" field and "user" object containing "permissions" array
+```
+
+Save the token for subsequent calls (uses only standard shell tools — no python3 needed):
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin123!"}' \
+  | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+```
+
+### Step 3 — Fetch protected data
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/catalog/
+# Expected: JSON array (may be empty on first run before test data is created)
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/admin/org/
+# Expected: JSON array with at least one org (the seeded "CareOps Demo" org)
+```
+
+### Step 4 — Unauthenticated request is rejected
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/catalog/
+# Expected: 401
+```
+
+### Step 5 — Web UI verification
+
+1. Open **http://localhost:3000** in your browser.
+2. You should see the CareOps login page.
+3. Log in with `admin` / `Admin123!`.
+4. Expected outcome: redirect to the Dashboard showing the sidebar with all navigation items.
+5. Navigate to **Admin → Organizations** — the seeded "CareOps Demo" org should appear.
+6. Navigate to **Catalog** — service items are shown (or an empty state before test data creation).
+7. Log out — you should be redirected back to the login page.
+
+### Step 6 — Run all automated tests
+
+```bash
+bash run_tests.sh
+# Expected: All test suites PASS — no local Rust or Python needed.
+# Success message: "All test suites passed."
+```
 
 ## Authentication
 
@@ -135,7 +208,7 @@ repo/
 ├── backend/
 │   ├── Cargo.toml
 │   ├── Dockerfile
-│   ├���─ migrations/
+│   ├── migrations/
 │   │   ├── 20240101000000_initial_schema.sql
 │   │   └── 20240102000000_security_rbac_audit.sql
 │   └── src/
@@ -155,7 +228,7 @@ repo/
 │       │   ├── billing/
 │       │   ├── payments_refunds/
 │       │   ├── scoring_reviews/
-│       ��   ├── reports_exports/
+│       │   ├── reports_exports/
 │       │   ├── observability/  # Health probes (public), metrics/alerts/chaos (api.ops.read)
 │       │   ├── ops/            # Degradation toggle controls (api.ops.read/write)
 │       │   └── tracing_fairing.rs
@@ -297,22 +370,80 @@ All errors return a consistent JSON envelope:
 
 ## Running Tests
 
+**Requires only:** Docker (with `docker compose` v2 plugin) and `curl`. No local Rust, Python, or Node installation needed.
+
+### What to run
+
 ```bash
-./run_tests.sh
+# 1. Start the application stack
+docker-compose up -d
+
+# 2. Run all test suites (fully Docker-contained — no local Rust/Python needed)
+bash run_tests.sh
 ```
 
-Test suites:
-1. Backend unit tests (password hashing, encryption, cache logic, validation rules, billing type validation, scoring formulas, metrics sliding window, alert threshold, degradation flag validation, chaos guardrails)
-2. Frontend build check
-3. Security unit tests
-4. Health endpoint smoke test
-5. API smoke tests (auth boundary verification)
-6. Auth & security integration tests
-7. Catalog & delivery integration tests (CRUD, validation, scope, role enforcement)
-8. Billing engine integration tests (charges, adjustments, invoices, payments, refunds, idempotency, reconciliation)
-9. Scoring & review integration tests (template creation, evaluation lifecycle, auto/manual/partial scoring, second-review enforcement)
-10. Reports & exports integration tests (KPI, order volume, revenue, utilization, masking defaults, unmasked permission gating)
-11. Ops controls & observability integration tests (health probes, metrics snapshot, alert state, chaos status, toggle enable/disable, exports-disabled 503, analytics-disabled 503, unknown flag 400)
+`run_tests.sh` waits for the backend to be ready, then executes every suite inside
+Docker containers. The only host-side dependency is `docker`, `docker compose`, and `curl`.
+
+### How tests are containerized
+
+| Steps | How it runs |
+|-------|-------------|
+| `[1]` Backend unit tests | `docker compose --profile test run backend-unit-tests` (rust:1.88-bookworm image) |
+| `[2]` Frontend unit tests | `docker compose --profile test run frontend-unit-tests` (rust:1.88-bookworm image) |
+| `[4]`–`[13]` API test suites | `docker compose --profile test run api-test-runner` (python:3.12-slim + curl image) |
+
+No `cargo`, `python3`, or other runtime tools are required on the host.
+
+### What success looks like
+
+```
+[1/13] Backend Unit Tests (cargo test --lib — in Docker)   PASS
+[2/13] Frontend Unit Tests (cargo test --lib — in Docker)  PASS
+[3/13] Security Unit Tests (in Docker)                     PASS
+[4/13] Health Endpoint Unit Test                           PASS
+[5/13] API Smoke Tests                                     PASS
+[6/13] API Auth & Security Tests                           PASS
+[7/13] API Catalog & Delivery Tests                        PASS
+[8/13] API Billing Engine Tests                            PASS
+[9/13] API Scoring & Review Tests                          PASS
+[10/13] API Reports & Exports Tests                        PASS
+[11/13] API Ops Controls Tests                             PASS
+[12/13] API Gap Coverage Tests (27 endpoints)              PASS
+[13/13] FE↔BE E2E Integration Test                        PASS
+All test suites passed.
+Coverage:
+  API endpoints:  90/90 (100%)
+  Backend units:  cargo test --lib
+  Frontend units: cargo test --lib  (state, models, url_utils, features)
+  E2E:            login → profile → catalog → write → read-back
+```
+
+### Troubleshooting common failures
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `Backend did not become ready` | Container still starting | Wait 30 s and re-run |
+| `401` on API tests | Token not obtained at login | Check `docker compose logs backend` for seed errors |
+| `Connection refused` | Stack not started | Run `docker-compose up -d` first |
+| Docker image build fails | Network issue fetching base images | Check `docker compose build --no-cache` |
+| `api-test-runner` not found | Profile not built yet | Run `docker compose --profile test build api-test-runner` |
+
+### Test suites
+
+1. **Backend unit tests** — auth, billing types, catalog validation, scoring formulas, payment methods, metrics, alert threshold, degradation flags, chaos guardrails, all controller request/response types and error mapping
+2. **Frontend unit tests** — `AuthState` permission logic + sidebar/topbar display helpers, model type serialization, URL construction, login validation, api_client contracts
+3. **Security unit tests** — password hashing, encryption
+4. **Health smoke test** — liveness probe
+5. **API smoke tests** — auth boundaries across all endpoint groups
+6. **Auth & security** — login/logout, token validity, role/scope boundary enforcement, cross-org isolation
+7. **Catalog & delivery** — service CRUD, package rules, plan assignment, delivery entry validation
+8. **Billing engine** — charge generation, adjustments, invoice lifecycle, payments, refunds, idempotency, reconciliation
+9. **Scoring & review** — template creation, evaluation lifecycle, auto/manual/partial scoring, second-review enforcement
+10. **Reports & exports** — KPI, order volume, revenue, utilization, masking, unmasked permission gating
+11. **Ops controls** — health probes, metrics, alert state, chaos status, toggle enable/disable, 503 degradation, unknown flag rejection
+12. **Gap coverage** — all 27 previously uncovered endpoints now have direct HTTP tests with request + response body assertions
+13. **E2E integration** — login → profile fetch → catalog read → delivery write → read-back verification (proves FE↔BE integration)
 
 ## Documentation
 

@@ -181,3 +181,6 @@ pub fn routes() -> Vec<Route> {
         update_invoice_status,
     ]
 }
+
+#[cfg(test)]
+mod tests;

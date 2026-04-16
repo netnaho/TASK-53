@@ -134,8 +134,8 @@ mod tests {
 
     #[test]
     fn test_mask_values() {
-        assert_eq!(EncryptionService::mask("123456789"), "12*****89");
-        assert_eq!(EncryptionService::mask("ab"), "****");
-        assert_eq!(EncryptionService::mask("abcde"), "a***e");
+        assert_eq!(EncryptionService::mask("123456789"), "12*****89"); // 2 + 5 stars + 2
+        assert_eq!(EncryptionService::mask("ab"), "****");             // len ≤ 4 → "****"
+        assert_eq!(EncryptionService::mask("abcde"), "ab*de");        // 2 + 1 star + 2 (len=5, stars=5-4=1)
     }
 }

@@ -75,3 +75,6 @@ pub async fn disable_flag(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_flags, enable_flag, disable_flag]
 }
+
+#[cfg(test)]
+mod tests;

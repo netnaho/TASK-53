@@ -94,3 +94,6 @@ pub async fn get_plan_packages(
 pub fn routes() -> Vec<Route> {
     rocket::routes![list_plans, get_plan, create_plan, update_plan, assign_package, get_plan_packages]
 }
+
+#[cfg(test)]
+mod tests;

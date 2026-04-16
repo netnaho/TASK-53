@@ -1,0 +1,9 @@
+# Test runner image: curl + python3 for API test scripts.
+# Used by the `api-test-runner` docker-compose service.
+FROM python:3.12-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
