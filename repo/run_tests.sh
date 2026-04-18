@@ -42,10 +42,21 @@ FAILED=0
 # -----------------------------------------------------------------------
 # Start the application stack
 # -----------------------------------------------------------------------
-echo -e "${YELLOW}Building images (no-cache to avoid stale layers)...${NC}"
-(cd "$SCRIPT_DIR" && docker compose build --no-cache)
-echo ""
-echo -e "${YELLOW}Starting application stack (docker compose up -d)...${NC}"
+# Enable BuildKit — required for the `--mount=type=cache` directives in the
+# Dockerfiles that persist the cargo registry & target dir across builds.
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+# `--no-cache` is intentionally NOT used: layer caching is what keeps
+# rebuilds fast. Pass REBUILD_NO_CACHE=1 to force a clean rebuild.
+BUILD_ARGS=""
+if [ "${REBUILD_NO_CACHE:-0}" = "1" ]; then
+    BUILD_ARGS="--no-cache"
+    echo -e "${YELLOW}REBUILD_NO_CACHE=1 set — forcing a no-cache rebuild.${NC}"
+fi
+
+echo -e "${YELLOW}Building and starting stack (docker compose up -d --build)...${NC}"
+(cd "$SCRIPT_DIR" && docker compose build $BUILD_ARGS)
 (cd "$SCRIPT_DIR" && docker compose up -d)
 echo -e "${GREEN}Stack started.${NC}"
 echo ""
@@ -58,10 +69,17 @@ READY_TIMEOUT="${BACKEND_READY_TIMEOUT:-300}"
 
 echo -e "${YELLOW}Waiting for backend at ${BACKEND_URL}/api/health/live (timeout ${READY_TIMEOUT}s)...${NC}"
 WAITED=0
+# Poll every 1s (was 2s) and also short-circuit on the container's native
+# HEALTHCHECK once it reports healthy, so we don't burn an extra poll cycle.
 while true; do
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/api/health/live" 2>/dev/null || echo "000")
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "${BACKEND_URL}/api/health/live" 2>/dev/null || echo "000")
     if [ "$STATUS" = "200" ]; then
         echo -e "${GREEN}Backend is ready (after ${WAITED}s).${NC}"
+        break
+    fi
+    CSTATE=$(docker inspect -f '{{.State.Health.Status}}' careops-backend 2>/dev/null || echo "")
+    if [ "$CSTATE" = "healthy" ]; then
+        echo -e "${GREEN}Backend container healthy (after ${WAITED}s).${NC}"
         break
     fi
     if [ "$WAITED" -ge "$READY_TIMEOUT" ]; then
@@ -69,8 +87,8 @@ while true; do
         echo -e "${RED}Check logs: docker compose logs backend${NC}"
         exit 1
     fi
-    sleep 2
-    WAITED=$((WAITED + 2))
+    sleep 1
+    WAITED=$((WAITED + 1))
 done
 echo ""
 

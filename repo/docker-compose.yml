@@ -17,10 +17,14 @@ services:
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ucareops_user", "-pcareops_pass"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 30s
+      # start_period is a grace window (failures don't count toward `retries`),
+      # not a delay — so keeping it generous is safe. MySQL first-boot
+      # initialization (data dir, user, database) can take 20-40s on a cold
+      # volume. The fast `interval` still catches "ready" quickly once up.
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
 
   backend:
     build:
@@ -42,6 +46,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
 
   frontend:
     build:
